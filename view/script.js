@@ -272,6 +272,11 @@
     }
     mouseX = toX
     mouseY = toY
+
+    if (hasDrag) {
+      // dont send mouse move when dragging
+      return
+    }
     debouncedSendMouseMove(mouseX, mouseY)
   });
 })()
