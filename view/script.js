@@ -56,10 +56,10 @@
         }
 
         // If the image is smaller than the canvas, center it
-        if (screenCap.width < canvas.width) {
+        if (screenCapWidth < canvas.width) {
           posX = (canvas.width - screenCapWidth) / 2;
         }
-        if (screenCap.height < canvas.height) {
+        if (screenCapHeight < canvas.height) {
           posY = (canvas.height - screenCapHeight) / 2;
         }
 
