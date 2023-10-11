@@ -20,7 +20,6 @@ import (
 
 var (
 	connected = false
-	drag      = false
 	lock      sync.Mutex
 )
 
@@ -124,6 +123,7 @@ func handleMouse(w http.ResponseWriter, r *http.Request) {
 	type clickAtrributes struct {
 		Click bool   `json:"click"`
 		Side  string `json:"side"`
+		Drag  bool   `json:"drag"`
 	}
 
 	type mouse struct {
@@ -146,15 +146,15 @@ func handleMouse(w http.ResponseWriter, r *http.Request) {
 
 	lock.Lock()
 
-	if drag {
+	if m.Click.Drag {
 		robotgo.DragSmooth(m.X, m.Y)
 	} else {
 		robotgo.MoveMouse(m.X, m.Y)
+		if m.Click.Click {
+			robotgo.Click(m.Click.Side)
+		}
 	}
 
-	if m.Click.Click {
-		robotgo.MouseClick(m.Click.Side, false)
-	}
 	lock.Unlock()
 }
 
@@ -177,11 +177,6 @@ func handleType(w http.ResponseWriter, r *http.Request) {
 	}
 
 	keys := strings.Split(t.Text, "|")
-
-	if len(keys) == 2 && keys[0] == "*" && keys[1] == "ctrl" {
-		drag = !drag
-	}
-
 	lock.Lock()
 	robotgo.KeyTap(keys[0], keys)
 	lock.Unlock()

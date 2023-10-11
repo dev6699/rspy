@@ -5,9 +5,75 @@
     socket.send("Hi From the Client!");
   };
 
-  socket.onmessage = function (evt) {
-    document.querySelector("#screen").src = "data:image/png;base64," + evt.data;
-  };
+  const screenCap = new Image();
+  let screenCapWidth
+  let screenCapHeight
+
+  // Wait for the DOM content to be fully loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    const canvas = document.querySelector("#screen");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
+
+    console.log(window.innerWidth, window.innerHeight)
+    function handleResize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", handleResize);
+
+    let imageLoaded = false;
+    screenCap.onload = function () {
+      imageLoaded = true;
+    };
+
+    socket.onmessage = function (evt) {
+      screenCap.src = "data:image/png;base64," + evt.data;
+    };
+
+    // Animation function using requestAnimationFrame
+    function animate() {
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw the image if it's loaded
+      if (imageLoaded) {
+
+        // Calculate position to draw the image
+        let posX = 0;
+        let posY = 0;
+
+        // Calculate new width and height to fit the canvas while maintaining aspect ratio
+        const aspectRatio = screenCap.width / screenCap.height;
+        screenCapWidth = canvas.width;
+        screenCapHeight = canvas.width / aspectRatio;
+
+        // Check if the calculated height exceeds the canvas height, if so, resize based on height
+        if (screenCapHeight > canvas.height) {
+          screenCapHeight = canvas.height;
+          screenCapWidth = canvas.height * aspectRatio;
+        }
+
+        // If the image is smaller than the canvas, center it
+        if (screenCap.width < canvas.width) {
+          posX = (canvas.width - screenCapWidth) / 2;
+        }
+        if (screenCap.height < canvas.height) {
+          posY = (canvas.height - screenCapHeight) / 2;
+        }
+
+        // Draw the image
+        ctx.drawImage(screenCap, posX, posY, screenCapWidth, screenCapHeight);
+      }
+
+      // Request animation frame for continuous rendering
+      requestAnimationFrame(animate);
+    }
+
+    // Start the animation loop
+    animate();
+  });
 
   socket.onclose = (event) => {
     console.log("Socket Closed Connection: ", event);
@@ -18,7 +84,12 @@
     console.log("Socket Error: ", error);
   };
 
-  let x, y
+  let mouseX, mouseY
+
+  document.addEventListener("contextmenu", function (event) {
+    // Prevent the default right-click menu behavior
+    event.preventDefault();
+  });
 
   document.addEventListener('keydown', (event) => {
     event.preventDefault()
@@ -64,15 +135,6 @@
       }
     }
 
-    if (key === '*|ctrl') {
-      const textEl = document.querySelector('#text')
-      if (textEl.innerHTML) {
-        textEl.innerHTML = ''
-      } else {
-        textEl.innerHTML = 'DRAGGING'
-      }
-    }
-
     fetch(window.location.href + "type", {
       method: "POST",
       body: JSON.stringify({
@@ -96,10 +158,10 @@
     };
   }
 
-  function sendMouse(x, y) {
+  function sendMouseMove(x, y) {
     fetch(window.location.href + "mouse", {
       method: "POST",
-      body: JSON.stringify({ x, y }),
+      body: JSON.stringify({ x: Math.floor(x), y: Math.floor(y) }),
       headers: {
         "Content-Type": "application/json",
       },
@@ -124,7 +186,7 @@
   }
 
   const debouncedScroll = debounce(sendScroll, 50);
-  const debouncedSendMouse = debounce(sendMouse, 50);
+  const debouncedSendMouseMove = debounce(sendMouseMove, 50);
 
   document.addEventListener('wheel', function (event) {
     let rate = event.deltaY
@@ -144,37 +206,72 @@
     debouncedScroll(scrollOpt)
   });
 
+
+  let isMouseDown = false
+  let hasDrag = false
+
+  document.addEventListener("mousedown", function (event) {
+    isMouseDown = true
+  })
+
   document.addEventListener('mouseup', (event) => {
-    if (event.button === 0) {
-      fetch(window.location.href + "mouse", {
-        method: "POST",
-        body: JSON.stringify({ x, y, clickAttr: { click: true, side: "left" } }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+
+    let side = ''
+    switch (event.button) {
+      case 0:
+        side = "left"
+        break
+      case 1:
+        side = "center"
+        break
+      case 2:
+        side = "right"
+        break
+      case 3:
+        side = "wheelDown"
+        break
+      case 4:
+        side = "wheelUp"
+        break
+      case 5:
+        side = "wheelLeft"
+        break
+      case 6:
+        side = "wheelRight"
+        break
     }
+
+    fetch(window.location.href + "mouse", {
+      method: "POST",
+      body: JSON.stringify({ x: Math.floor(mouseX), y: Math.floor(mouseY), clickAttr: { click: true, side, drag: hasDrag } }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    isMouseDown = false
+    hasDrag = false
   })
 
   document.addEventListener("mousemove", function (event) {
-    const img = document.querySelector("#screen");
-    const offSetX = (window.innerWidth - img.width) / 2
-    const offSetY = (window.innerHeight - img.height) / 2
+    if (isMouseDown) {
+      hasDrag = true
+    }
+
+    const offSetX = (window.innerWidth - screenCapWidth) / 2
+    const offSetY = (window.innerHeight - screenCapHeight) / 2
     const pX = event.clientX
     const pY = event.clientY
 
-    const widthRatio = img.naturalWidth / img.width
-    const heightRatio = img.naturalHeight / img.height
+    const widthRatio = screenCap.naturalWidth / screenCapWidth
+    const heightRatio = screenCap.naturalHeight / screenCapHeight
     const toX = Math.floor((pX - offSetX) * widthRatio)
     const toY = Math.floor((pY - offSetY) * heightRatio)
 
-    if (toX <= 0 || toX >= img.naturalWidth || toY <= 0 || toY >= img.naturalHeight) {
+    if (toX <= 0 || toX >= screenCap.naturalWidth || toY <= 0 || toY >= screenCap.naturalHeight) {
       return
     }
-    x = toX
-    y = toY
-
-    debouncedSendMouse(x, y)
+    mouseX = toX
+    mouseY = toY
+    debouncedSendMouseMove(mouseX, mouseY)
   });
-
 })()
