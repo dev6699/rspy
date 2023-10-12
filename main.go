@@ -79,12 +79,17 @@ func updateScreen(conn *websocket.Conn) {
 			for i := 0; i < n; i++ {
 				bounds := screenshot.GetDisplayBounds(i)
 
-				img, _ := screenshot.CaptureRect(bounds)
+				img, err := screenshot.CaptureRect(bounds)
+				if err != nil {
+					// err when screen locked
+					log.Println(err)
+					continue
+				}
 				buffer := new(bytes.Buffer)
 				png.Encode(buffer, img)
 				encoded := base64.StdEncoding.EncodeToString(buffer.Bytes())
 
-				err := conn.WriteMessage(messageType, []byte(encoded))
+				err = conn.WriteMessage(messageType, []byte(encoded))
 				if err != nil {
 					log.Println(err)
 					break L

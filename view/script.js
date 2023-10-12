@@ -1,4 +1,6 @@
 (() => {
+  const BASE64_PREFIX = "data:image/png;base64,"
+
   const socket = new WebSocket("ws://" + window.location.host + "/ws");
   socket.onopen = () => {
     console.log("Successfully Connected");
@@ -16,7 +18,6 @@
     canvas.height = window.innerHeight;
     const ctx = canvas.getContext("2d");
 
-    console.log(window.innerWidth, window.innerHeight)
     function handleResize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -29,7 +30,7 @@
     };
 
     socket.onmessage = function (evt) {
-      screenCap.src = "data:image/png;base64," + evt.data;
+      screenCap.src = BASE64_PREFIX + evt.data;
     };
 
     // Animation function using requestAnimationFrame
@@ -63,8 +64,10 @@
           posY = (canvas.height - screenCapHeight) / 2;
         }
 
-        // Draw the image
-        ctx.drawImage(screenCap, posX, posY, screenCapWidth, screenCapHeight);
+        if (screenCap.src !== BASE64_PREFIX) {
+          // Draw the image
+          ctx.drawImage(screenCap, posX, posY, screenCapWidth, screenCapHeight);
+        }
       }
 
       // Request animation frame for continuous rendering
