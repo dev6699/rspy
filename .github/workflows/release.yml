@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2 
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pre-build image and build release in devcontainer
+        uses: devcontainers/ci@v0.3
+        env:
+          # To fix ${localEnv:XAUTHORITY} mount error
+          XAUTHORITY: /tmp
+        with:
+          imageName: ghcr.io/dev6699/rspy-devcontainer
+          cacheFrom: ghcr.io/dev6699/rspy-devcontainer
+          push: always
+          runCmd: go build -o rspy main.go
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            rspy
