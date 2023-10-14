@@ -1,6 +1,6 @@
 module github.com/dev6699/rspy
 
-go 1.20
+go 1.21
 
 require (
 	github.com/go-vgo/robotgo v1.0.0-rc2.1
