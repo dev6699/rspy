@@ -1,7 +1,9 @@
 (() => {
   const BASE64_PREFIX = "data:image/png;base64,"
 
-  const socket = new WebSocket("ws://" + window.location.host + "/ws");
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+
+  const socket = new WebSocket(wsProtocol + window.location.host + "/ws");
   socket.onopen = () => {
     console.log("Successfully Connected");
     socket.send("Hi From the Client!");
