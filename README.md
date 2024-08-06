@@ -33,6 +33,17 @@ RSPY utilizes WebSocket technology to establish a real-time connection between y
     ```bash
     go run main.go
     ```
+    **Available options:**
+    ```bash
+    -i string
+        Interval between screenshot capture. Examples: [100ms, 1s, 1m, 1h] (default "100ms")
+    -q int
+        Quality of screenshot, ranges from 1 to 100 inclusive, higher is better (default 80)
+    ```
+    Sample usage with `1 second interval` and `100 quality`:
+    ```bash
+    go run main.go -i 1s -q 100
+    ```
 
 4. Access the Web Interface:
 

@@ -5,13 +5,15 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/json"
-	"image/png"
+	"flag"
+	"image/jpeg"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-vgo/robotgo"
 	"github.com/gorilla/websocket"
@@ -21,16 +23,43 @@ import (
 var (
 	connected = false
 	lock      sync.Mutex
+	interval  time.Duration
+	quality   int
 )
 
 //go:embed all:view
 var content embed.FS
 
 func main() {
+	f := parseFlags()
+	quality = f.Quality
+	if quality < 1 || quality > 100 {
+		log.Fatal("Invalid quality option: ", quality)
+	}
+	d, err := time.ParseDuration(f.Interval)
+	if err != nil {
+		log.Fatal(err)
+	}
+	interval = d
+	log.Println("Quality:", quality)
+	log.Println("Interval:", interval)
 	setupRoutes()
 	log.Println("⚠️ CAUTION USE AT YOUR OWN RISK!!! ⚠️")
 	log.Println("Server listening on http://0.0.0.0:8888")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8888", nil))
+}
+
+type Flags struct {
+	Quality  int
+	Interval string
+}
+
+func parseFlags() Flags {
+	var f Flags
+	flag.IntVar(&f.Quality, "q", 80, "Quality of screenshot, ranges from 1 to 100 inclusive, higher is better")
+	flag.StringVar(&f.Interval, "i", "100ms", "Interval between screenshot capture. Examples: [100ms, 1s, 1m, 1h]")
+	flag.Parse()
+	return f
 }
 
 func setupRoutes() {
@@ -86,7 +115,11 @@ func updateScreen(conn *websocket.Conn) {
 					continue
 				}
 				buffer := new(bytes.Buffer)
-				png.Encode(buffer, img)
+				opt := jpeg.Options{
+					Quality: quality,
+				}
+
+				jpeg.Encode(buffer, img, &opt)
 				encoded := base64.StdEncoding.EncodeToString(buffer.Bytes())
 
 				err = conn.WriteMessage(messageType, []byte(encoded))
@@ -95,6 +128,7 @@ func updateScreen(conn *websocket.Conn) {
 					break L
 				}
 			}
+			time.Sleep(interval)
 		}
 	}
 	connected = false

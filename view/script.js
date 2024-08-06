@@ -1,5 +1,5 @@
 (() => {
-  const BASE64_PREFIX = "data:image/png;base64,"
+  const BASE64_PREFIX = "data:image/jpeg;base64,"
 
   const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
 
